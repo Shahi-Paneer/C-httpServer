@@ -50,6 +50,14 @@ int main()
         printf("Socket created successfully: %d\n", s);
     }
 
+    // Set SO_REUSEADDR to allow immediate rebinding:
+    int opt = 1;
+    if (setsockopt(s, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0)
+    {
+        perror("setsockopt failed");
+        return 1;
+    }
+
     // === bind() CHECK ===
     if (bind(s, res->ai_addr, res->ai_addrlen) == -1)
     {
@@ -80,46 +88,51 @@ int main()
     addr_size = sizeof their_addr;
     printf("Waiting for a connection...\n");
 
-    a = accept(s, (struct sockaddr *)&their_addr, &addr_size);
-    if (a == -1)
+    while (1)
     {
-        perror("Accept failed");
-        freeaddrinfo(res); // Clean up
-        close(s);          // Close the socket
-        return 1;
-    }
-    else
-    {
-        printf("Client connected! Socket FD: %d\n", a);
-    }
 
-    // === Receive Data ===
-    char buffer[1024];
-    int bytes_received = recv(a, buffer, sizeof(buffer) - 1, 0);
-    if (bytes_received == -1)
-    {
-        perror("Receive failed");
-    }
-    else
-    {
-        buffer[bytes_received] = '\0'; // Null-terminate the string
-        printf("Received from client: %s\n", buffer);
-    }
+        a = accept(s, (struct sockaddr *)&their_addr, &addr_size);
+        if (a == -1)
+        {
+            perror("Accept failed");
+            freeaddrinfo(res); // Clean up
+            close(s);          // Close the socket
+            return 1;
+        }
+        else
+        {
+            printf("Client connected! Socket FD: %d\n", a);
+        }
 
-    // === Send Response ===
-    const char *response = "Message received!\n";
-    if (send(a, response, strlen(response), 0) == -1)
-    {
-        perror("Send failed");
-    }
-    else
-    {
-        printf("Response sent to client.\n");
+        // === Receive Data ===
+        char buffer[1024];
+        int bytes_received = recv(a, buffer, sizeof(buffer) - 1, 0);
+        if (bytes_received == -1)
+        {
+            perror("Receive failed");
+        }
+        else
+        {
+            buffer[bytes_received] = '\0'; // Null-terminate the string
+            printf("Received from client: %s\n", buffer);
+        }
+
+        // === Send Response ===
+        const char *response = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><body>Hello from C Server!</body></html>";
+        if (send(a, response, strlen(response), 0) == -1)
+        {
+            perror("Send failed");
+        }
+        else
+        {
+            printf("Response sent to client.\n");
+        }
+
+        close(a);
     }
 
     // Cleanup
     freeaddrinfo(res);
-    close(a);
     close(s);
 
     return 0;
