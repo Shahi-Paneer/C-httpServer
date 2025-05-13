@@ -2,12 +2,67 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <unistd.h> // For close()
+
+char *getFile(char path[])
+{
+
+    if (access(path, F_OK) == 0)
+    {
+        // file exists
+        printf("PATH EXISTS!\n");
+        return("wassgood");
+    }
+    else
+    {
+        // file doesn't exist
+        printf("Path not found!\n");
+        printf("DFDFDFFDF");
+
+        FILE *fptr;
+
+        char notFoundPath[100] = "./public/404.html";
+
+        // Open a file in read mode
+        fptr = fopen(notFoundPath, "r");
+
+        // Get the file size
+        struct stat st;
+        if (stat(notFoundPath, &st) == -1)
+        {
+            perror("Stat failed");
+            fclose(fptr);
+            return NULL;
+        }
+
+        // Allocate memory for the file content (+1 for null terminator)
+        char *content = malloc(st.st_size + 1);
+        if (!content)
+        {
+            perror("Memory allocation failed");
+            fclose(fptr);
+            return NULL;
+        }
+
+        // Read the file into the buffer
+        size_t bytes_read = fread(content, 1, st.st_size, fptr);
+        content[bytes_read] = '\0'; // Null-terminate the string
+
+        fclose(fptr);
+
+        // Print the file content
+        printf("%s", content);
+
+        return content;
+    }
+}
 
 int main()
 {
@@ -88,6 +143,14 @@ int main()
     {
 
         a = accept(s, (struct sockaddr *)&their_addr, &addr_size);
+
+        char *string = NULL;
+        string = (char *)calloc(1, sizeof(char));
+
+        char httpHeader[42] = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n";
+
+        int responseLength;
+
         if (a == -1)
         {
             perror("Accept failed");
@@ -111,10 +174,21 @@ int main()
         {
             buffer[bytes_received] = '\0'; // Null-terminate the string
             printf("Received from client: %s\n", buffer);
+
+            char *method = strtok(buffer, " ");
+            char *path = strtok(NULL, " ");
+
+            printf("Method: %s\n", method);
+            printf("Path: %s\n", path);
+
+            responseLength = strlen(getFile(path)) + 42; //add length of http header
+            string = (char*)calloc(responseLength + 1, sizeof(char));
+            string = strcat(httpHeader, getFile(path));
         }
 
         // === Send Response ===
-        const char *response = "HTTP/1.1 200 OK\nContent-Type: text/html\n\n<html><body>Hello from C Server!</body></html>";
+
+        const char *response = string;
         if (send(a, response, strlen(response), 0) == -1)
         {
             perror("Send failed");
