@@ -14,16 +14,67 @@
 char *getFile(char path[])
 {
 
-    if (access(path, F_OK) == 0)
+
+    char *fullPath = NULL;
+    fullPath = (char *)calloc(1, sizeof(char));
+
+    char basePath[9] = "./public";
+
+    printf("%s", basePath);
+    int pathLength = strlen(basePath) + strlen(path);
+    fullPath = (char*)calloc(pathLength + 1, sizeof(char));
+    fullPath = basePath;
+    strcat(fullPath, path);
+
+
+
+    if (access(fullPath, F_OK) == 0)
     {
         // file exists
         printf("PATH EXISTS!\n");
-        return("wassgood");
+        // file doesn't exist
+        printf("\nPath not found!\n");
+        printf("DFDFDFFDF");
+
+        FILE *fptr;
+
+
+        // Open a file in read mode
+        fptr = fopen(fullPath, "r");
+
+        // Get the file size
+        struct stat st;
+        if (stat(fullPath, &st) == -1)
+        {
+            perror("Stat failed");
+            fclose(fptr);
+            return NULL;
+        }
+
+        // Allocate memory for the file content (+1 for null terminator)
+        char *content = malloc(st.st_size + 1);
+        if (!content)
+        {
+            perror("Memory allocation failed");
+            fclose(fptr);
+            return NULL;
+        }
+
+        // Read the file into the buffer
+        size_t bytes_read = fread(content, 1, st.st_size, fptr);
+        content[bytes_read] = '\0'; // Null-terminate the string
+
+        fclose(fptr);
+
+        // Print the file content
+       // printf("%s", content);
+
+        return content;
     }
     else
     {
         // file doesn't exist
-        printf("Path not found!\n");
+        printf("\nPath not found!\n");
         printf("DFDFDFFDF");
 
         FILE *fptr;
@@ -58,7 +109,7 @@ char *getFile(char path[])
         fclose(fptr);
 
         // Print the file content
-        printf("%s", content);
+       // printf("%s", content);
 
         return content;
     }
@@ -181,8 +232,8 @@ int main()
             printf("Method: %s\n", method);
             printf("Path: %s\n", path);
 
-            responseLength = strlen(getFile(path)) + 42; //add length of http header
-            string = (char*)calloc(responseLength + 1, sizeof(char));
+            responseLength = strlen(getFile(path)) + 42; // add length of http header
+            string = (char *)calloc(responseLength + 1, sizeof(char));
             string = strcat(httpHeader, getFile(path));
         }
 
